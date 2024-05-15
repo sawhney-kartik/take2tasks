@@ -51,7 +51,7 @@ def uploadAudio():
         s3_file_name = f"{user_id}_audio.{file_extension}"
         try:
             s3_client.upload_fileobj(file, 'taskresponses', s3_file_name)
-            file_url = f"taskresponses.s3.amazonaws.com/{s3_file_name}"
+            file_url = f"https://taskresponses.s3.amazonaws.com/{s3_file_name}"
             
             table.update(user_id, {fieldForUrl: file_url})
             return jsonify({'status': 'completed', 'url': file_url}), 200
