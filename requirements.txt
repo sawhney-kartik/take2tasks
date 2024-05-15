@@ -1,0 +1,6 @@
+Flask==2.3.2
+requests==2.31.0
+beautifulsoup4==4.12.2
+openai==1.23.6
+pyairtable==2.3.3
+boto3==1.28.41

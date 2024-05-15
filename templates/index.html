@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Record Audio</title>
+    <style>
+        #timer {
+            font-size: 28px;
+            font-weight: 600;
+            margin: 20px;
+            display: block;
+            color: #223f8d;
+        }
+        .centered-container {
+            text-align: center;
+            border: 1px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .button {
+            display: inline-block;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 12px 20px;
+            margin: 0 10px;
+            font-family: "Oxygen", sans-serif;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .startButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .stopButton {
+            background-color: #f44336;
+            color: white;
+        }
+        .submitButton {
+            background-color: #008CBA;
+            color: white;
+        }
+        .button:disabled {
+            background-color: #c5c5c5;
+            cursor: not-allowed;
+        }
+        audio {
+            display: block;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="centered-container">
+        <div id="timer">00:00</div>
+        <button id="startButton" class="button startButton" onclick="startRecording()">Start Recording</button>
+        <button id="stopButton" class="button stopButton" onclick="stopRecording()" disabled>Stop Recording</button>
+        <button id="submitButton" class="button submitButton" onclick="submitAudio()" disabled>Submit</button>
+        <p id="status"></p>
+        <audio id="audioPlayer" controls style="display: none;"></audio>
+    </div>
+
+    <script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+    let timerInterval; // Track the timer interval
+    let seconds = 0; // Initialize seconds to 0
+    let minutes = 0; // Initialize minutes to 0
+    let audioUrl = '';
+
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                document.getElementById('status').textContent = 'Recording...';
+                document.getElementById('stopButton').disabled = false;
+
+                mediaRecorder.addEventListener('dataavailable', event => {
+                    audioChunks.push(event.data);
+                });
+
+                mediaRecorder.addEventListener('stop', () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/mp3' });
+                    audioChunks = [];
+
+                    const formData = new FormData();
+                    formData.append('file', audioBlob, 'recording.mp3');
+                    formData.append('userId', 'rec1Igzq5Y6X3ceaY');
+                    formData.append('fieldForUrl', 'audioResponseUrl');
+
+                    fetch('/uploadAudio', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.url) {
+                            audioUrl = data.url;
+                            console.log('Audio URL:', audioUrl); // Debug log for the URL
+                            document.getElementById('status').textContent = 'File uploaded!';
+                            const audioPlayer = document.getElementById('audioPlayer');
+                            audioPlayer.src = audioUrl;
+                            audioPlayer.style.display = 'block';
+                            document.getElementById('submitButton').disabled = false;
+                            document.getElementById('startButton').textContent = 'Record Again';
+                        } else {
+                            document.getElementById('status').textContent = 'Error uploading file!';
+                            console.error('Upload error:', data);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                        document.getElementById('status').textContent = 'Error uploading file!';
+                    });
+                });
+
+                mediaRecorder.addEventListener('error', error => console.error('Error recording audio:', error));
+                
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('timer').style.display = "block";
+                timerInterval = setInterval(updateTimer, 1000); // Start the timer interval
+
+            })
+            .catch(error => console.error('Error accessing media devices:', error));
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+        document.getElementById('status').textContent = 'Stopping...';
+        document.getElementById('stopButton').disabled = true;
+        document.getElementById('startButton').disabled = false;
+
+        clearInterval(timerInterval); // Clear the timer interval
+
+        // Reset timer variables
+        seconds = 0;
+        minutes = 0;
+
+        // Reset the timer display immediately
+        document.getElementById("timer").innerText = "00:00";
+    }
+
+    function updateTimer() {
+        seconds++;
+        if (seconds === 60) {
+            seconds = 0;
+            minutes++;
+        }
+        const formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+        const formattedSeconds = seconds < 10 ? "0" + seconds : seconds;
+        document.getElementById("timer").innerText = formattedMinutes + ":" + formattedSeconds;
+    }
+
+    function submitAudio() {
+        const formData = new FormData();
+        formData.append('fileUrl', audioUrl);
+        formData.append('prompt', 'Score the text for grammar on a 10-point scale. Your output should be a json with the keys being score and rationale. The score should have an integer value representing the score, and the rationale should be a string representing the rationale for that score.');
+        formData.append('userId', 'rec1Igzq5Y6X3ceaY');
+        formData.append('fieldForScore', 'aiScoreM1Integer');
+        formData.append('fieldForRationale', 'aiRationaleM1Text');
+
+        fetch('/scoreAudio', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Accept': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Success:', data);
+            document.getElementById('status').textContent = 'Audio scored successfully!';
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            document.getElementById('status').textContent = 'Error scoring audio!';
+        });
+    }
+    </script>
+</body>
+</html>
