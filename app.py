@@ -2,14 +2,14 @@ from flask import Flask, request, jsonify, render_template
 import requests
 import os
 import boto3
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from openai import OpenAI
 import json
 from pyairtable import Api
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 
 # Load environment variables
-load_dotenv()
+# load_dotenv()
 
 api = Api(os.getenv("airtableKey"))
 table = api.table(os.getenv("airtableBase"), os.getenv("airtableTableId"))
